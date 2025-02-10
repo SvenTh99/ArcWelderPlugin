@@ -3,8 +3,7 @@
 # Arc Welder: Anti-Stutter
 #
 # A plugin for OctoPrint that converts G0/G1 commands into G2/G3 commands where possible and ensures that the tool
-# paths don't deviate by more than a predefined resolution.  This compresses the gcode file sice, and reduces reduces
-# the number of gcodes per second sent to a 3D printer that supports arc commands (G2 G3)
+# paths don't deviate by more than a predefined resolution.  This compresses the gcode file size, and reduces the number of gcodes per second sent to a 3D printer that supports arc commands (G2 G3)
 #
 # Copyright (C) 2020  Brad Hochgesang
 # #################################################################################
@@ -26,18 +25,12 @@
 ##################################################################################
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-#from distutils.command.build_ext import build_ext
-from distutils.ccompiler import CCompiler
-from distutils.unixccompiler import UnixCCompiler
-from distutils.msvccompiler import MSVCCompiler
-from distutils.bcppcompiler import BCPPCompiler
-from distutils.cygwinccompiler import CygwinCCompiler
-from distutils.version import LooseVersion
-from distutils.sysconfig import customize_compiler
-from octoprint_arc_welder_setuptools import NumberedVersion
+from setuptools import CCompiler, UnixCCompiler, MSVCCompiler, BCPPCompiler, CygwinCCompiler
+from packaging.version import Version  # Replaced LooseVersion with Version from packaging
 import sys
 import platform
 import versioneer
+import octoprint.server
 
 ########################################################################################################################
 # The plugin's identifier, has to be unique
@@ -51,9 +44,7 @@ plugin_name = "Arc Welder"
 # This can happen if the user installs from one of the .zip links in github, not generated with git archive
 fallback_version = "1.0.0"
 plugin_version = versioneer.get_version()
-if plugin_version == "0+unknown" or NumberedVersion(plugin_version) < NumberedVersion(
-    fallback_version
-):
+if plugin_version == "0+unknown" or Version(plugin_version) < Version(fallback_version):
     plugin_version = fallback_version
     try:
         # This generates version in the following form:
@@ -81,9 +72,7 @@ plugin_license = "AGPLv3"
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = ["six", "OctoPrint>1.3.8", "setuptools>=6.0"]
 
-import octoprint.server
-
-if LooseVersion(octoprint.server.VERSION) < LooseVersion("1.4"):
+if Version(octoprint.server.VERSION) < Version("1.4"):
     plugin_requires.extend(["flask_principal>=0.4,<1.0"])
 
 # enable faulthandler for python 3.
@@ -93,7 +82,7 @@ if (3, 0) < sys.version_info < (3, 3):
 
 # --------------------------------------------------------------------------------------------------------------------
 # More advanced options that you usually shouldn't have to touch follow after this point
-# --------------------------------------d------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 
 # Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
 # already be installed automatically if they exist. Note that if you add something here you'll also need to update
@@ -180,7 +169,6 @@ class build_ext_subclass(build_ext):
     def build_extensions(self):
         print("Compiling PyGcodeArcConverter Extension with {0}.".format(self.compiler))
         # get rid of -Wstrict-prototypes option, it just generates pointless warnings
-        customize_compiler(self.compiler)
         try:
             self.compiler.compiler_so.remove("-Wstrict-prototypes")
         except (AttributeError, ValueError):
